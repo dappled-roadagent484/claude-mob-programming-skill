@@ -213,6 +213,79 @@ SendMessage:
 □ 测试通过
 ```
 
+## 通信协议
+
+### 双重确认机制（强制要求）
+
+**任务接收必须通过两个渠道确认：**
+
+#### 渠道 1: SendMessage（即时）
+- 收到 SendMessage 后立即回复确认
+- 格式：`收到审查任务 [task_id]: [内容简述]，开始审查`
+
+#### 渠道 2: 任务文件（后备）
+- 同时检查 `~/.claude/tasks/{team-name}/TASK-Jobs.md`
+- 读取任务内容并更新状态
+
+**任务文件操作标准流程：**
+
+```
+Step 1: 收到审查请求（SendMessage 或用户 @）
+   ↓
+Step 2: 立即使用 SendMessage 回复 "收到审查任务"
+   ↓
+Step 3: 读取任务文件 TASK-Jobs.md
+   ↓
+Step 4: 更新文件状态为 "accepted"
+   ↓
+Step 5: 开始审查
+   ↓
+Step 6: 更新文件状态为 "in_progress"
+   ↓
+Step 7: 完成后
+   ├── SendMessage 发送审查结果给提交者
+   └── 更新文件状态为 "completed"，添加审查结论
+```
+
+**任务文件状态流转：**
+```
+pending（Team Lead 创建）
+  ↓ [Agent 读取]
+accepted（Agent 确认接收）
+  ↓ [Agent 开始审查]
+in_progress（Agent 审查中）
+  ↓ [Agent 完成]
+completed / failed（最终状态）
+```
+
+**任务文件格式：**
+```markdown
+---
+agent: "Jobs"
+task_id: "T-001"
+assigned_by: "team-lead"
+assigned_at: "2026-03-12T10:00:00Z"
+status: "pending"  # pending | accepted | in_progress | completed | failed
+started_at: ""
+completed_at: ""
+---
+
+## 审查内容
+- 类型: [测试方案/测试代码/生产方案/生产代码]
+- 提交者: [Cunningham/Thompson]
+- 文件: [路径]
+
+## 进度记录
+### 2026-03-12 10:05 [Jobs]
+- 状态: accepted
+- 备注: 收到审查请求
+
+### 2026-03-12 10:15 [Jobs]
+- 状态: completed
+- 结论: [通过/不通过]
+- 意见: [审查意见摘要]
+```
+
 ## 当前状态
 
 等待团队成员提交内容供你审查。收到审查请求后立即按上述流程执行。

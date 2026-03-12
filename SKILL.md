@@ -36,7 +36,85 @@ triggers:
 
 你是一个 Mob Programming 协调员。当用户触发此技能时，按以下流程执行。
 
+## Agent 唯一性管理机制
+
+### 核心原则：单实例角色
+
+**问题**：多个相同角色的 Agent 同时活动会导致消息混乱、任务重复执行
+
+**解决方案**：
+
+1. **启动前检查** - 启动任何 Agent 前，先检查是否已有同角色 Agent 在运行
+2. **命名规范** - 使用固定名称：`Cunningham`, `Jobs`, `Thompson`（不要加后缀）
+3. **复用机制** - 如果 Agent 已存在，复用而不是新建
+4. **清理机制** - 新 session 启动时，清理遗留的 team-task-list 和 agent tasklist 文件
+
+### Agent 状态管理
+
+```
+启动 Agent 前：
+1. 检查 ~/.claude/teams/{team-name}/config.json 中的成员列表
+2. 如果目标角色已存在 → 复用现有 Agent
+3. 如果目标角色不存在 → 启动新 Agent
+4. 绝不启动同名 Agent
+```
+
+### Agent 生命周期
+
+```
+创建 → 分配任务 → 执行 → 汇报 → 等待新任务
+  ↑                                      ↓
+  └────── 复用现有 Agent（不新建）────────┘
+```
+
+**严禁行为**：
+- ❌ 启动 `Cunningham-2`, `Thompson-backup` 等变体名称
+- ❌ 在已有 Agent 活跃时启动同名 Agent
+- ❌ 不检查直接启动新 Agent
+
+---
+
 ## 启动流程（用户确认制）
+
+### 阶段 0: 环境清理与初始化
+
+**每次启动 Mob Programming 时必须执行：**
+
+0. **检查并清理旧团队（关键步骤）**
+   ```
+   启动新团队前，必须先检查是否存在旧团队：
+
+   Step 1: 检查现有团队
+     - 运行: ls ~/.claude/teams/
+     - 如果有任何团队目录存在，说明有旧团队残留
+
+   Step 2: 关闭旧团队成员
+     - 读取 ~/.claude/teams/{team-name}/config.json
+     - 向所有成员发送 shutdown_request 消息
+     - 等待确认或超时（最多 30 秒）
+
+   Step 3: 删除旧团队
+     - 运行: TeamDelete
+     - 验证: ~/.claude/teams/ 和 ~/.claude/tasks/ 为空
+
+   Step 4: 确认清理完成后再继续
+     - 如果删除失败，手动删除残留目录:
+       rm -rf ~/.claude/teams/*
+       rm -rf ~/.claude/tasks/*
+   ```
+   **⚠️ 绝对禁止: 在有旧团队的情况下直接调用 TeamCreate**
+
+1. **清理遗留任务文件**
+   ```bash
+   # 删除可能存在的旧任务文件
+   rm -f ~/.claude/tasks/*/ASSIGNMENT-*.md
+   rm -f ~/.claude/teams/*/TASK-*.md
+   ```
+
+2. **检查现有 Agent 状态**
+   - 读取 `~/.claude/teams/{team-name}/config.json`
+   - 检查当前活跃的 Agent 列表
+   - 记录已存在的角色，避免重复创建
 
 ### 阶段 1: 任务分析
 
@@ -91,33 +169,253 @@ triggers:
 
 ### 阶段 3: 启动执行
 
+**启动前确认清单：**
+- [ ] 阶段 0 的清理已完成（旧团队已关闭并删除）
+- [ ] ~/.claude/teams/ 目录为空
+- [ ] ~/.claude/tasks/ 目录为空
+
+**执行步骤：**
+
 4. **创建任务列表** - 使用 TaskCreate 创建任务跟踪
 5. **启动团队** - 根据权限情况选择执行模式（见下方"执行模式选择"）
+   - 首先执行 TeamCreate
+   - 然后启动各个 Agent 成员
 
-## 执行模式选择
+## 执行模式选择（避免手动模式）
 
-**⚠️ 重要：由于 Agent/Team 工具可能被用户拒绝，必须按以下优先级选择执行模式：**
+**核心原则：尽一切努力保持团队模式，手动模式是最后手段**
 
-### 模式 1: 完整团队模式（推荐，需要 Agent 权限）
-使用条件：用户允许使用 Agent 工具
-- 创建团队：TeamCreate
-- 启动 Cunningham/Jobs/Thompson 子 Agent
-- 使用 SendMessage 进行团队通信
+### 模式优先级
 
-### 模式 2: 手动协调模式（降级方案）
-使用条件：用户拒绝 Agent 工具或 Team 工具
-- 不创建团队，不启动子 Agent
-- 你（主 Agent）直接协调整个流程
-- 使用 Read/Glob/Grep 读取需要的信息
-- 使用自然语言描述团队成员的"审查意见"
-- 用户确认后，使用 Edit/Write 直接编写代码
-
-**权限被拒绝时的处理：**
 ```
-如果 TeamCreate 或 Agent 调用被拒绝：
-1. 立即切换到手动协调模式
-2. 向用户说明："已切换到手动协调模式，我将直接为您完成 TDD 开发流程"
-3. 继续执行任务拆解和代码编写
+1. 完整团队模式（首选）
+   ↓ 失败时
+2. 故障诊断与自动恢复
+   ↓ 无法恢复时
+3. 简化团队模式（单 Agent）
+   ↓ 仍然失败时
+4. 手动协调模式（最后手段）
+```
+
+### 模式 1: 完整团队模式（强烈推荐）
+
+**前置沟通策略（预防拒绝）**
+
+在用户确认团队配置后、启动 Agent 前，主动说明：
+
+```
+即将启动 Mob Programming 团队。这种模式需要：
+- 创建团队工作区（TeamCreate）
+- 启动专业角色 Agent（Cunningham/Thompson/Jobs）
+- Agent 间自动协作完成任务
+
+优势：
+✓ 专业分工，测试代码和生产代码由不同专家编写
+✓ 自动代码审查，确保质量
+✓ 并行工作，提高效率
+✓ 符合 TDD 规范
+
+预计启动 2-3 个专业 Agent，请允许相关权限。
+```
+
+**启动流程：**
+```
+Step 1: 【关键】检查并清理旧团队
+        - ls ~/.claude/teams/ 检查是否有残留
+        - 如果有，TeamDelete 删除旧团队
+        - 确认 ~/.claude/teams/ 和 ~/.claude/tasks/ 为空
+
+Step 2: TeamCreate 创建新团队
+
+Step 3: 清理历史任务文件
+
+Step 4: 启动 Cunningham（检查唯一性）
+
+Step 5: 启动 Jobs（检查唯一性）
+
+Step 6: 启动 Thompson（检查唯一性）
+
+Step 7: 分配首任务，开始工作
+```
+
+**⚠️ 关键检查点：** 如果在 Step 2 遇到 "Already leading team" 错误，立即返回 Step 1 重新执行清理。
+
+### 模式 2: 故障诊断与自动恢复
+
+**当 Agent/Team 调用失败时，执行诊断流程：**
+
+#### 诊断步骤
+
+```
+错误类型判断：
+├─ 团队已存在（"Already leading team"）
+│   └─ 进入【团队清理流程】
+├─ 权限被拒绝（用户点击拒绝）
+│   └─ 进入【权限恢复流程】
+├─ 资源限制（达到 Agent 上限）
+│   └─ 进入【资源释放流程】
+├─ 通信超时（SendMessage 无响应）
+│   └─ 进入【Agent 重启流程】
+└─ 其他错误
+    └─ 记录错误，尝试简化模式
+```
+
+#### 团队清理流程（解决 "Already leading team" 错误）
+
+```
+当遇到 "Already leading team" 或 "A leader can only manage one team at a time" 错误时：
+
+Step 1: 检查残留团队
+   ls ~/.claude/teams/
+   ls ~/.claude/tasks/
+
+Step 2: 尝试优雅关闭
+   - 读取 ~/.claude/teams/{team-name}/config.json
+   - 向所有成员发送 shutdown_request
+   - 等待 10-30 秒
+
+Step 3: 强制删除团队
+   TeamDelete
+   # 或手动删除
+   rm -rf ~/.claude/teams/*
+   rm -rf ~/.claude/tasks/*
+
+Step 4: 验证清理完成
+   - 确认 ~/.claude/teams/ 为空
+   - 确认 ~/.claude/tasks/ 为空
+
+Step 5: 重新启动团队
+   - 返回阶段 0 重新执行
+   - 重新 TeamCreate
+```
+
+**关键原则：**
+- ❌ 绝不在有旧团队残留时直接调用 TeamCreate
+- ✅ 总是先清理，再创建
+- ✅ 清理失败时手动删除目录
+
+---
+
+#### 权限恢复流程
+
+```
+1. 不立即切换到手动模式
+2. 向用户说明：
+   "团队模式需要 Agent 权限来实现专业分工。如果拒绝，
+    将无法使用 TDD 专家团队，只能由我一个人完成所有工作。
+    确定要切换到单兵模式吗？"
+
+3. 如果用户坚持拒绝 → 进入【简化团队模式】
+```
+
+#### 资源释放流程
+
+```
+1. 检查当前活跃的 Agent 列表
+2. 识别可以暂停的非关键 Agent
+3. 向用户申请释放资源：
+   "当前 Agent 数量达到上限。建议：
+    - 先完成当前 Mob Programming 任务
+    - 或暂停其他 Agent 释放资源
+    请选择？"
+```
+
+#### Agent 重启流程（解决无响应问题）
+
+```
+当 Agent 无响应超过 2 分钟：
+
+Step 1: 检查 Agent 状态
+   - 使用 TaskList 查看 Agent 任务状态
+   - 读取任务文件查看最后更新时间
+
+Step 2: 尝试唤醒
+   - SendMessage: "请确认状态"
+   - 等待 30 秒
+
+Step 3: 如果仍无响应
+   - 记录故障 Agent 和任务进度
+   - 关闭无响应 Agent（如有必要）
+   - 使用相同名称重新启动 Agent
+   - 新 Agent 继承任务文件继续工作
+
+Step 4: 分析无响应原因
+   - 任务过于复杂？→ 拆分任务
+   - 上下文丢失？→ 简化任务描述
+   - 消息未送达？→ 依赖任务文件机制
+```
+
+### 模式 3: 简化团队模式（降级但不完全手动）
+
+**当无法启动多个 Agent 时，尝试只启动最关键的角色：**
+
+| 任务类型 | 优先保留 | 原因 |
+|----------|----------|------|
+| 新功能开发 | Thompson | 实现能力是核心 |
+| 代码重构 | Jobs | 审查能力是核心 |
+| 提升覆盖率 | Thompson | 编写测试代码是核心 |
+
+**流程：**
+```
+1. 尝试只启动 Thompson
+2. 你（Team Lead）承担 Cunningham 和 Jobs 的职责
+3. 通过任务文件给 Thompson 分配任务
+4. Thompson 完成任务后，你进行审查
+5. 仍保持 TDD 流程，只是审查由你完成
+```
+
+### 模式 4: 手动协调模式（最后手段）
+
+**仅在以下情况允许进入手动模式：**
+
+```
+✗ 用户明确拒绝所有 Agent 权限（三次以上）
+✗ 系统完全无法创建 Agent（非权限问题）
+✗ 连续三次 Agent 重启失败
+✗ 任务紧急且团队模式阻塞超过 10 分钟
+```
+
+**进入手动模式前必须：**
+
+```
+1. 记录进入手动模式的原因：
+   - 时间戳
+   - 尝试的恢复措施
+   - 最终失败原因
+   - 建议的 skill 改进
+
+2. 向用户明确说明：
+   "由于 [具体原因]，切换到手动协调模式。
+    我将直接完成工作，但无法享受团队分工的优势。"
+
+3. 完成任务后，分析报告进入手动模式的原因
+```
+
+### 手动模式原因分析与改进
+
+**每次进入手动模式后，必须分析原因并改进 skill：**
+
+```markdown
+## 手动模式触发报告
+
+### 触发时间
+2026-03-12 10:30
+
+### 任务描述
+提升 payment 模块测试覆盖率
+
+### 尝试的恢复措施
+1. 权限恢复沟通 - 用户拒绝
+2. 尝试简化模式（仅 Thompson）- 用户拒绝
+3. Agent 重启 - 未执行（用户拒绝权限）
+
+### 根本原因
+用户担心 Agent 工具的安全性
+
+### 改进建议
+1. 在启动前更详细说明 Agent 的工作方式和权限范围
+2. 提供 Agent 的"试用"模式（先启动一个）
+3. 增加安全说明，解释 Agent 只在本地工作
 ```
 
 ## 使用示例
@@ -187,30 +485,98 @@ triggers:
 
 > ⚠️ **仅在有权限时使用此方式，否则切换到手动协调模式**
 
-使用 Agent 工具启动团队成员，将对应的 agents 目录下的 markdown 内容作为 prompt：
+**关键原则：单实例角色 - 绝不启动同名 Agent**
+
+### 启动前检查流程
+
+```
+启动 Agent 前必须：
+1. 检查团队配置文件: ~/.claude/teams/{team-name}/config.json
+2. 确认目标角色是否已存在
+3. 如果已存在 → 复用，不启动新 Agent
+4. 如果不存在 → 启动新 Agent
+```
+
+**命名规范（严格固定）：**
+- `Cunningham` - 单元测试专家（唯一名称）
+- `Jobs` - 架构师/审查者（唯一名称）
+- `Thompson` - 生产代码专家（唯一名称）
+
+**严禁使用变体名称：**
+- ❌ Cunningham-2, Cunningham-backup
+- ❌ Jobs-new, Jobs-v2
+- ❌ Thompson-temp, Thompson-2
 
 ### 启动 Cunningham（单元测试专家）
+
 ```
+启动前检查：
+1. 读取 ~/.claude/teams/{team-name}/config.json
+2. 检查 members 数组中是否有 name="Cunningham"
+3. 如果存在 → SendMessage 给现有 Cunningham 分配任务
+4. 如果不存在 → 启动新 Agent
+
 调用 Agent 工具：
 - subagent_type: general-purpose
-- name: Cunningham
-- prompt: [读取 agents/turing.md 内容] + [当前子任务描述] + [项目上下文]
+- name: Cunningham  （固定名称，绝不更改）
+- prompt: [读取 agents/cunningham.md 内容] + [当前子任务描述] + [项目上下文]
+- team_name: {team-name}  （确保加入团队）
 ```
 
 ### 启动 Jobs（架构师/审查者）
+
 ```
+启动前检查：
+1. 读取 ~/.claude/teams/{team-name}/config.json
+2. 检查 members 数组中是否有 name="Jobs"
+3. 如果存在 → SendMessage 给现有 Jobs 分配审查任务
+4. 如果不存在 → 启动新 Agent
+
 调用 Agent 工具：
 - subagent_type: general-purpose
-- name: Jobs
+- name: Jobs  （固定名称，绝不更改）
 - prompt: [读取 agents/jobs.md 内容] + [待审查内容]
+- team_name: {team-name}  （确保加入团队）
 ```
 
 ### 启动 Thompson（生产代码专家）
+
 ```
+启动前检查：
+1. 读取 ~/.claude/teams/{team-name}/config.json
+2. 检查 members 数组中是否有 name="Thompson"
+3. 如果存在 → SendMessage 给现有 Thompson 分配实现任务
+4. 如果不存在 → 启动新 Agent
+
 调用 Agent 工具：
 - subagent_type: general-purpose
-- name: Thompson
+- name: Thompson  （固定名称，绝不更改）
 - prompt: [读取 agents/thompson.md 内容] + [当前任务描述]
+- team_name: {team-name}  （确保加入团队）
+```
+
+### 发送任务流程（双重保障）
+
+```
+给 Agent 分配任务时：
+
+Step 1: 清理旧任务文件
+   Bash: rm -f ~/.claude/tasks/{team}/TASK-{agent}.md
+
+Step 2: 写入新任务文件
+   Write: ~/.claude/tasks/{team}/TASK-{agent}.md
+   包含：任务描述、输入、验收标准、状态=pending
+
+Step 3: 发送 SendMessage
+   SendMessage:
+   - type: message
+   - recipient: {agent-name}
+   - summary: "新任务分配"
+   - content: "任务已写入 TASK-{agent}.md，请查收并更新状态"
+
+Step 4: 等待确认
+   - Agent 应回复 SendMessage 确认
+   - 同时检查任务文件状态是否变为 accepted
 ```
 
 ## 🚨 团队纪律（硬性规定）
@@ -232,6 +598,50 @@ triggers:
 | **Cunningham（默认）** | 编写测试代码 | 编写生产代码 |
 | **Thompson（默认）** | 编写生产代码 | 编写测试代码 |
 | **Jobs** | 审查代码、质量把关 | 编写任何代码 |
+
+**⚠️ 关键规则：Driver 阅读代码 vs 编写代码**
+
+Driver（Thompson）可以**阅读代码**来了解上下文，但必须遵守：
+
+```
+允许的行为（阅读阶段）：
+├── 查看现有代码结构
+├── 理解函数逻辑和接口
+├── 查看现有的 mock 实现
+├── 熟悉项目约定
+└── 等待 Navigator 的明确指令
+
+绝对禁止的行为（阅读阶段）：
+├── ❌ 阅读后立即开始写代码
+├── ❌ 自己决定写什么测试
+├── ❌ 自己决定如何重构
+├── ❌ 说"让我开始写..."、"我现在就写..."
+└── ❌ 任何未等 Navigator 指令就行动的行为
+```
+
+**正确的 Driver 工作流程**：
+```
+1. 【可选】Lead 分配：先阅读代码了解上下文
+          ↓
+2. Driver 阅读代码，**仅了解，不动手**
+          ↓
+3. Driver 汇报：已了解代码结构，等待方案
+          ↓
+4. Navigator 完成方案设计
+          ↓
+5. Lead 明确指令 Driver：现在开始编写 [具体文件/函数]
+          ↓
+6. Driver 根据 Navigator 的明确方案编写代码
+          ↓
+7. 完成后汇报，等待下一步指令
+```
+
+**违反此规则的典型表现**：
+- "我已经了解了代码，现在让我开始写测试..."
+- "看完代码后，我觉得应该这样写..."
+- "我现在就编写 processNextJob 的测试..."
+
+**违规处理**：第一次警告，第二次移除 Driver 角色。
 
 **3. 工作指令流程**
 ```
@@ -506,13 +916,58 @@ TaskUpdate 更新状态：pending → in_progress → completed
 
 ### 团队通信
 
-### 模式 1: 使用 SendMessage（需要 Agent 权限）
+### 模式 1: 使用 SendMessage + 任务文件后备（推荐）
 
+**双重保障机制：**
+
+发送任务时，同时进行：
+1. **SendMessage** - 即时通知 Agent
+2. **写入任务文件** - 作为可靠后备
+
+**Team Lead 发送任务流程：**
 ```
-SendMessage:
-- type: message
-- recipient: Jobs
-- content: "测试方案已完成，请审查..."
+Step 1: 写入 Agent 专属任务文件
+   Write: ~/.claude/tasks/{team-name}/TASK-{agent-name}.md
+   内容包含：任务描述、输入文件、验收标准、状态
+
+Step 2: 发送 SendMessage 通知
+   SendMessage:
+   - type: message
+   - recipient: {agent-name}
+   - summary: "新任务分配"
+   - content: "任务已写入 TASK-{agent-name}.md，请查收"
+
+Step 3: 等待确认
+   - Agent 收到消息后应立即回复确认
+   - 同时更新任务文件状态为 "accepted"
+```
+
+**任务文件格式标准：**
+```markdown
+---
+agent: "Thompson"
+task_id: "T-001"
+assigned_by: "team-lead"
+assigned_at: "2026-03-12T10:00:00Z"
+status: "pending"  # pending | accepted | in_progress | completed | failed
+---
+
+## 任务描述
+[详细描述要做什么]
+
+## 输入文件
+- [文件路径1]
+- [文件路径2]
+
+## 验收标准
+- [ ] 标准1
+- [ ] 标准2
+
+## 输出要求
+[期望的产出格式]
+
+## 备注
+[其他信息]
 ```
 
 ### 模式 2: 手动协调（无 Agent）
@@ -557,21 +1012,118 @@ SendMessage:
    - Thompson 直接实现生产代码
    - Jobs 在最后进行整体审查
 
-## 错误处理
+## 错误处理与恢复机制
 
-### Agent/Team 权限被拒绝
+### Agent/Team 权限被拒绝（先恢复，不立即降级）
 
-**这是最常见的情况，必须优雅处理：**
+**⚠️ 重要：不要立即切换到手动模式，先尝试恢复**
+
+#### 第一次被拒绝（尝试沟通）
 
 ```
-如果 TeamCreate 或 Agent 调用被拒绝：
-1. 立即停止尝试创建团队/启动 Agent
-2. 向用户说明："已切换到手动协调模式，我将直接为您完成 TDD 开发流程"
-3. 切换到手动协调模式继续工作
-4. 使用自然语言描述团队成员的审查意见
+1. 暂停，不立即切换模式
+2. 向用户说明团队模式的价值：
+
+   "我计划启动 Mob Programming 专家团队来完成这个任务：
+
+   👥 Cunningham - 测试专家，负责编写全面的测试用例
+   👥 Thompson - 实现专家，负责编写高质量的生产代码
+   👥 Jobs - 架构师，负责代码审查和质量把控
+
+   这种模式的优势：
+   ✓ 专业分工，测试和生产代码由不同专家编写
+   ✓ 自动代码审查，确保符合 SOLID 原则
+   ✓ 严格遵循 TDD 流程（红-绿-重构）
+   ✓ 并行工作，提高效率
+
+   如果切换到手动模式，所有工作将由我一个人完成，
+   可能无法达到同样的质量水平。
+
+   建议先尝试团队模式，如果不满意再切换？"
+
+3. 如果用户同意 → 继续启动 Agent
+4. 如果用户坚持拒绝 → 记录原因，进入【简化团队模式】
 ```
 
-### 团队成员无响应（仅模式 1）
+#### 连续被拒绝（分析原因）
+
+```
+如果用户多次拒绝 Agent 权限：
+
+1. 询问拒绝原因：
+   - 担心安全问题？→ 解释 Agent 只在本地工作
+   - 担心成本？→ 说明这是 Claude Code 内置功能
+   - 之前体验不好？→ 了解具体问题并改进
+
+2. 提供折中方案：
+   "可以先只启动 Thompson（实现专家），
+    测试方案和审查由我完成？"
+
+3. 最后手段：记录详细原因，进入手动模式
+```
+
+### Agent 健康监控与自动恢复
+
+**核心机制：预防优于治疗，自动恢复优于手动切换**
+
+#### Agent 健康检查清单
+
+```
+每 2 分钟执行一次健康检查：
+
+□ 检查 Agent 是否在线
+  - 读取任务文件最后更新时间
+  - 如果超过 3 分钟未更新 → 标记为可疑
+
+□ 检查任务进度
+  - 任务文件状态是否为 in_progress
+  - 如果长时间 pending → 可能未收到任务
+
+□ 检查消息响应
+  - 最后一条 SendMessage 是否有回复
+  - 如果超过 2 分钟无回复 → 触发唤醒流程
+```
+
+#### Agent 唤醒与恢复流程
+
+```
+发现 Agent 无响应：
+
+Step 1: 尝试唤醒（0-30 秒）
+   SendMessage: "请确认状态"
+   等待 30 秒
+
+Step 2: 检查任务文件（30-60 秒）
+   读取 ~/.claude/tasks/{team}/TASK-{agent}.md
+   如果文件已更新 → Agent 在工作，只是消息未送达
+   如果文件未更新 → 继续 Step 3
+
+Step 3: 在对话中提醒（60-90 秒）
+   在主对话中 @Agent: "请检查任务文件并更新状态"
+   等待 30 秒
+
+Step 4: 自动重启（90-120 秒）
+   如果仍无响应：
+   - 记录当前任务进度
+   - 尝试关闭无响应 Agent
+   - 使用相同名称重新启动 Agent
+   - 新 Agent 读取任务文件继续工作
+
+Step 5: 报告用户（如果重启失败）
+   "Agent {name} 无响应，已尝试重启。
+    如果再次失败，将切换到简化模式。"
+```
+
+#### Agent 无响应的根本原因与预防
+
+| 现象 | 可能原因 | 预防措施 |
+|------|----------|----------|
+| 完全无响应 | Agent 崩溃或卡死 | 任务文件后备机制 |
+| 偶尔响应 | 消息传递不稳定 | 不依赖 SendMessage，主要使用任务文件 |
+| 响应慢 | 任务过于复杂 | 任务粒度控制在 30 分钟内 |
+| 只回复一次 | Agent 空闲后不再检查 | 任务文件中明确要求定期检查 |
+
+### 团队成员无响应（预防为主）
 
 **问题：Agent 收不到 SendMessage 通知**
 
@@ -580,21 +1132,39 @@ SendMessage:
 2. 消息传递机制不稳定
 3. 缺乏送达确认机制
 
-**解决方案（必须在 skill 中明确）：**
+**解决方案（强化版）：**
 
-**1. 消息确认机制（强制要求）**
+**1. 不依赖 SendMessage 的任务分配机制**
 ```
-发送方（Team Lead）：
-1. 发送任务分配消息
-2. 等待 30 秒
-3. 如果 Agent 无响应 → 使用 Read 工具检查 Agent 是否已读取文件
-4. 如果仍未响应 → 在对话中 @Agent 提醒
-5. 如果 2 分钟仍无响应 → 重启 Agent 或降级到手动模式
+核心原则：任务文件是主要通信渠道，SendMessage 只是通知
 
-接收方（Agent）：
-1. 收到任务后立即使用 SendMessage 回复"收到"
-2. 开始工作后发送"开始执行 [任务名]"
-3. 完成后发送"任务完成：[结果概要]"
+Team Lead：
+1. 写入任务文件（主要）
+2. 发送 SendMessage（次要，仅作通知）
+3. 不等待 SendMessage 回复
+4. 定期检查任务文件状态
+
+Agent：
+1. 定期检查任务文件（每 30 秒）
+2. 发现新任务 → 更新文件状态为 accepted
+3. 开始工作 → 更新文件状态为 in_progress
+4. 完成 → 更新文件状态为 completed
+5. SendMessage 仅作为通知（不依赖）
+```
+
+**2. 任务文件轮询机制（核心后备）**
+
+```
+Team Lead 操作：
+1. 创建任务文件后，记录创建时间
+2. 每 30 秒检查文件状态
+3. 如果 2 分钟内状态未变为 accepted → 在对话中 @Agent
+4. 如果 3 分钟内仍未变化 → 重启 Agent
+
+Agent 操作：
+1. 启动后立即检查任务文件
+2. 设置定时器每 30 秒检查一次
+3. 发现状态为 pending 且 assigned_to 是自己 → 立即接受
 ```
 
 **2. 备选通知方式**
@@ -603,37 +1173,74 @@ SendMessage:
 - 使用 TaskUpdate 更新任务描述分配任务
 - **Agent 轮询任务分配文件（推荐）**
 
-**3. Agent 轮询任务分配文件机制**
+**3. Agent 轮询任务分配文件机制（核心后备方案）**
 
-这是最可靠的方案：
+**这是最可靠的方案，必须实现：**
 
 **Team Lead 操作：**
-1. 创建任务分配文件 `.tasks/ASSIGNMENT-{agent-name}.md`
-2. 文件包含：任务描述、输入文件、验收标准、截止时间
-3. 更新 TaskList 状态为 `in_progress`
+1. 清理旧任务文件：`rm -f ~/.claude/tasks/{team}/TASK-{agent}.md`
+2. 创建新任务文件：`~/.claude/tasks/{team}/TASK-{agent}.md`
+3. 文件包含：任务描述、输入文件、验收标准、状态
+4. 发送 SendMessage 通知 Agent（仅作提示）
+5. **不依赖 SendMessage，定期检查任务文件状态**
 
-**Agent 操作：**
-1. 定期检查（每 30 秒）`.tasks/` 目录
-2. 发现以自己名字命名的任务文件 → 读取并确认
-3. 开始工作后，将文件状态更新为 `accepted`
-4. 完成后删除或归档任务文件
+**Agent 操作（强制要求）：**
+1. **收到任务后必须立即**：
+   - 使用 SendMessage 回复确认
+   - 读取任务文件并更新状态为 `accepted`
+2. **开始执行时**：
+   - 更新任务文件状态为 `in_progress`
+   - 记录开始时间
+3. **完成后**：
+   - 使用 SendMessage 汇报结果
+   - 更新任务文件状态为 `completed`
+   - 添加完成时间和产出摘要
+4. **定期检查**：每 30 秒检查任务文件是否有新任务
 
-**示例任务分配文件：**
+**Agent 任务文件标准格式：**
 ```markdown
 ---
-assigned_to: Thompson
-task_id: "#13"
-status: pending
+agent: "Thompson"
+task_id: "T-001"
+assigned_by: "team-lead"
+assigned_at: "2026-03-12T10:00:00Z"
+status: "pending"
+  # pending → accepted → in_progress → completed/failed
+started_at: ""
+completed_at: ""
 ---
 
-## 任务：编写 monitoring 模块测试代码
+## 任务描述
+[详细描述]
 
-**输入文件：** `internal/monitoring/TEST_PLAN.md`
+## 输入
+- 文件: [路径]
+- 上下文: [信息]
 
-**工作内容：** ...
+## 验收标准
+- [ ] 标准1
+- [ ] 标准2
 
-**验收标准：** ...
+## 进度记录
+### 2026-03-12 10:05 [Thompson]
+- 状态: accepted
+- 备注: 收到任务，开始分析
+
+### 2026-03-12 10:10 [Thompson]
+- 状态: in_progress
+- 备注: 开始编写代码
+
+### 2026-03-12 10:30 [Thompson]
+- 状态: completed
+- 产出: [文件路径]
+- 备注: 测试通过，覆盖率 90%
 ```
+
+**关键原则：**
+- Team Lead 写入任务文件 → Agent 读取并更新 → 双向确认
+- SendMessage 失效时，Agent 从文件读取任务
+- Agent 必须从 SendMessage 或文件渠道收到任务后立即回应
+- 任务完成时，必须 SendMessage 且更新文件
 
 **4. 降级机制**
 
@@ -819,6 +1426,73 @@ Phase 2: Thompson 编写 A 模块测试
 下一步: [下一阶段描述]
 ```
 
+## 持续改进：手动模式触发分析
+
+**核心原则：每次进入手动模式都是改进的机会**
+
+### 手动模式触发记录模板
+
+**触发后必须记录：**
+
+```markdown
+## 手动模式触发报告 #{编号}
+
+### 基本信息
+- 触发时间: 2026-03-12 10:30
+- 任务描述: 提升 payment 模块测试覆盖率
+- 团队模式: Pair 覆盖率模式 (Cunningham + Thompson)
+
+### 尝试的恢复措施（按顺序）
+| 步骤 | 措施 | 结果 | 耗时 |
+|------|------|------|------|
+| 1 | 向用户说明团队模式价值 | 用户仍拒绝 | 2min |
+| 2 | 尝试简化模式（仅 Thompson） | 用户仍拒绝 | 1min |
+| 3 | 询问拒绝原因并提供保证 | 用户担心安全 | 2min |
+| 4 | - | - | - |
+
+### 根本原因分类
+- [ ] 用户权限拒绝（担心安全/成本/体验）
+- [ ] Agent 启动失败（系统错误）
+- [ ] Agent 无响应（消息机制失效）
+- [ ] 资源限制（Agent 数量上限）
+- [ ] 其他: ___________
+
+### 具体原因
+用户担心 Agent 工具会访问敏感数据
+
+### 本次改进措施
+1. 在启动前增加安全说明
+2. 提供"试用"选项（先启动一个 Agent）
+3. 增加权限最小化说明
+
+### 技能改进建议
+- [skill.md:xxx] 添加 xxx 说明
+- [cunningham.md:xxx] 修改 xxx 流程
+```
+
+### 常见失败模式与预防
+
+| 失败模式 | 根本原因 | 预防措施 | 已实施 |
+|----------|----------|----------|--------|
+| 用户拒绝 Agent 权限 | 担心安全/隐私 | 启动前主动说明权限范围和安全保障 | ✅ |
+| Agent 无响应 | SendMessage 不可靠 | 任务文件作为主要通信渠道 | ✅ |
+| 多个 Agent 冲突 | 同名 Agent 重复启动 | 启动前检查 config.json 确保唯一性 | ✅ |
+| Agent 卡死 | 任务过于复杂 | 任务粒度控制在 30 分钟内 | ✅ |
+| 上下文丢失 | Agent 重启后失忆 | 任务文件记录完整上下文 | ✅ |
+
+### 改进验证机制
+
+```
+每次更新 skill 后：
+1. 更新上表"已实施"列
+2. 观察接下来 5 次 Mob Programming 会话
+3. 记录是否再次触发手动模式
+4. 如果仍有触发，分析是否为新原因
+5. 循环改进
+```
+
 ## 现在开始
 
 等待用户输入要开发的功能，然后开始拆解任务并启动流程。
+
+**记住：尽一切努力保持团队模式，手动模式是最后手段。**

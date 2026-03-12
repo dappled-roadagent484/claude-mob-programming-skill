@@ -123,32 +123,69 @@ SendMessage:
 
 ## 通信协议
 
-### 消息可靠性（强制要求）
+### 双重确认机制（强制要求）
 
-**由于 SendMessage 可能不可靠，必须遵守：**
+**任务接收必须通过两个渠道确认：**
 
-**1. 收到消息后立即确认**
+#### 渠道 1: SendMessage（即时）
+- 收到 SendMessage 后立即回复确认
+- 格式：`收到任务 [task_id]: [任务名]，开始执行`
+
+#### 渠道 2: 任务文件（后备）
+- 同时检查 `~/.claude/tasks/{team-name}/TASK-Cunningham.md`
+- 读取任务内容并更新状态
+
+**任务文件操作标准流程：**
+
 ```
-收到任务分配后，立即回复：
-"收到任务：[任务名]，开始执行"
+Step 1: 收到任务通知（SendMessage 或用户 @）
+   ↓
+Step 2: 立即使用 SendMessage 回复 "收到任务"
+   ↓
+Step 3: 读取任务文件 TASK-Cunningham.md
+   ↓
+Step 4: 更新文件状态为 "accepted"
+   ↓
+Step 5: 开始执行
+   ↓
+Step 6: 更新文件状态为 "in_progress"
+   ↓
+Step 7: 完成后
+   ├── SendMessage 汇报结果给 Team Lead
+   └── 更新文件状态为 "completed"，添加产出摘要
 ```
 
-**2. 主动检查机制**
-- 空闲时定期使用 TaskList 检查是否有新任务
-- 如果 Team Lead 提到你的名字但未收到消息，主动询问
+**任务文件状态流转：**
+```
+pending（Team Lead 创建）
+  ↓ [Agent 读取]
+accepted（Agent 确认接收）
+  ↓ [Agent 开始工作]
+in_progress（Agent 执行中）
+  ↓ [Agent 完成]
+completed / failed（最终状态）
+```
 
-**3. 无响应时的处理**
-如果 Team Lead 在对话中 @你但未收到消息：
-- 立即检查消息邮箱
-- 使用 Read 工具检查任务文件
-- 检查 `.tasks/ASSIGNMENT-cunningham.md` 文件（轮询机制）
-- 主动回复"我在，请分配任务"
+**任务文件格式：**
+```markdown
+---
+agent: "Cunningham"
+task_id: "T-001"
+assigned_by: "team-lead"
+assigned_at: "2026-03-12T10:00:00Z"
+status: "pending"  # pending | accepted | in_progress | completed | failed
+started_at: ""
+completed_at: ""
+---
 
-**4. 任务文件轮询（推荐）**
-作为备选方案，定期检查：
-- `~/.claude/tasks/{team-name}/ASSIGNMENT-cunningham.md`
-- 如果文件存在且状态为 `pending`，立即读取并确认
-- 开始工作后更新文件状态为 `accepted`
+## 任务描述
+...
+
+## 进度记录
+### 2026-03-12 10:05 [Cunningham]
+- 状态: accepted
+- 备注: 收到任务
+```
 
 ### 发送消息
 - 测试方案完成后 → Team Lead（必须等待确认）
