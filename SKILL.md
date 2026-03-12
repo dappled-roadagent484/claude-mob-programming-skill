@@ -1043,6 +1043,89 @@ status: "pending"  # pending | accepted | in_progress | completed | failed
 - 当前进度（x/y 子任务）
 - 下一阶段预告
 
+## 严格任务依赖控制机制（防止跳过任务）
+
+**问题**：Agent 可能未完成前置任务就执行后续任务
+
+**解决方案**：强制任务依赖检查
+
+### 任务依赖声明
+
+创建任务时必须使用 `addBlockedBy` 声明依赖：
+
+```
+Task 1: Phase 4 - Smart Size (无前置依赖)
+  ↓ 完成后
+Task 2: Phase 5 - Form Layout (依赖 Task 1)
+  addBlockedBy: ["1"]
+  ↓ 完成后
+Task 3: Phase 6 - Migration (依赖 Task 2)
+  addBlockedBy: ["2"]
+```
+
+### Lead 分配任务前必须执行（强制检查清单）
+
+```
+Step 1: 检查所有前置任务状态
+  TaskList
+
+Step 2: 确认前置任务已完成
+  - 检查每个 blockedBy 的任务状态为 "completed"
+  - 如有任何前置任务未完成，禁止分配新任务
+
+Step 3: 设置任务依赖关系
+  TaskUpdate --taskId "新任务ID" --addBlockedBy ["前置任务ID列表"]
+
+Step 4: 分配任务给 Agent
+  - 只有前置任务完成才能执行
+```
+
+### Agent 接受任务前必须执行
+
+```
+Agent 收到任务时：
+
+Step 1: 检查任务依赖
+  TaskGet --taskId "分配的任务ID"
+
+Step 2: 确认前置任务已完成
+  - 遍历 blockedBy 列表
+  - 对每个前置任务调用 TaskGet 检查状态
+  - 如果任何前置任务状态 != "completed"：
+    → 拒绝执行任务
+    → SendMessage: "前置任务 X 未完成，无法开始此任务"
+
+Step 3: 前置任务全部完成后
+  → 更新状态为 in_progress
+  → 开始执行任务
+```
+
+### 违规处理
+
+| 违规情况 | 处理措施 |
+|---------|---------|
+| Agent 未完成前置任务就执行 | 立即停止，要求先完成前置任务 |
+| Agent 自行开始未分配的任务 | 警告，第二次移出团队 |
+| Lead 未检查依赖就分配任务 | 检查清单未执行，需重新确认 |
+
+### 任务状态检查命令
+
+```bash
+# Lead 检查所有任务状态
+TaskList
+
+# Lead 检查特定任务详情
+TaskGet --taskId "任务ID"
+
+# 设置任务依赖
+TaskUpdate --taskId "3" --addBlockedBy ["1", "2"]
+
+# Agent 确认可以开始任务
+# 1. 调用 TaskGet 检查自己的任务
+# 2. 检查 blockedBy 列表中所有任务状态为 completed
+# 3. 然后才能开始执行
+```
+
 ## 快速模式（用户要求跳过审查）
 
 如果用户说"快点"、"跳过审查"、"不需要审查"、"直接写代码"：
@@ -1123,6 +1206,11 @@ status: "pending"  # pending | accepted | in_progress | completed | failed
 □ 检查消息响应
   - 最后一条 SendMessage 是否有回复
   - 如果超过 2 分钟无回复 → 触发唤醒流程
+
+□ 检查任务依赖
+  - 调用 TaskList 查看所有任务状态
+  - 检查是否有任务违反依赖（blockedBy 未完成就执行）
+  - 发现违规立即暂停 Agent，要求先完成前置任务
 ```
 
 #### Agent 唤醒与恢复流程
@@ -1226,7 +1314,23 @@ Agent 操作：
 5. **不依赖 SendMessage，定期检查任务文件状态**
 
 **Agent 操作（强制要求）：**
-1. **收到任务后必须立即**：
+
+**【关键】前置任务检查（必须在开始前执行）：**
+```
+Step 0: 检查任务依赖（前置任务检查）
+   - 调用 TaskGet 获取任务详情
+   - 检查 blockedBy 字段是否有依赖
+   - 如果有依赖任务：
+     对每个依赖任务调用 TaskGet 检查状态
+     如果任何依赖状态 != "completed"：
+       → SendMessage: "无法开始任务，前置任务 X 未完成（状态：Y）"
+       → 等待 Lead 处理
+       → 绝不开始执行
+   - 只有所有依赖任务都 completed 才能继续
+```
+
+**标准执行流程：**
+1. **确认无未完成依赖后**：
    - 使用 SendMessage 回复确认
    - 读取任务文件并更新状态为 `accepted`
 2. **开始执行时**：
