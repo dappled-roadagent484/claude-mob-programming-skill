@@ -67,7 +67,8 @@ Cunningham(Navigator) 设计方案 → Thompson(Driver) 编写代码 → Cunning
 
 **示例 1：新功能开发**
 ```
-用户：帮我用 TDD 实现一个用户注册功能
+用户：pair programming（或"结对编程"）
+      帮我用 TDD 实现一个用户注册功能
 → 启动 Pair TDD 模式
 → Cunningham 设计测试方案
 → Thompson 编写测试和生产代码
@@ -76,7 +77,8 @@ Cunningham(Navigator) 设计方案 → Thompson(Driver) 编写代码 → Cunning
 
 **示例 2：提升测试覆盖率**
 ```
-用户：提升 payment 模块测试覆盖率到 90%
+用户：提升测试覆盖率
+      payment 模块需要提升到 90%
 → 启动 Pair 覆盖率模式
 → Cunningham 分析代码并设计测试方案
 → Thompson 编写测试代码
