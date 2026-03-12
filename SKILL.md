@@ -1371,11 +1371,71 @@ Team Lead 分类处理：
 传统串行：
 Cunningham 完成 → Thompson 开始 → Cunningham 审查
 
-优化并行：
+优化并行（跨模块并行）：
 Phase 1: Cunningham 分析 A 模块
          Thompson 编写 B 模块测试（B 的方案已完成）
 Phase 2: Thompson 编写 A 模块测试
          Cunningham 分析 C 模块
+```
+
+**1.5 流水线并行（同一模块不同阶段并行）**
+
+更高效的并行策略：当 Driver 根据当前方案编写代码时，Navigator 立即开始设计下一阶段的方案。
+
+```
+传统串行（低效）：
+Cunningham 设计方案 A → Thompson 编写代码 A → Cunningham 设计方案 B → Thompson 编写代码 B
+（总时间 = 设计A + 编码A + 设计B + 编码B）
+
+流水线并行（高效）：
+时间段 1: Cunningham 设计方案 A
+          Thompson 等待
+
+时间段 2: Cunningham 设计方案 B（同时）
+          Thompson 编写代码 A（根据方案A）
+
+时间段 3: Cunningham 设计方案 C（同时）
+          Thompson 编写代码 B（根据方案B）
+
+（总时间 ≈ max(设计A+设计B+设计C, 编码A+编码B)）
+```
+
+**流水线并行执行规则：**
+
+1. **启动条件**
+   - Driver 已收到明确的编码任务
+   - 存在下一阶段需要设计的模块
+
+2. **并行执行**
+   ```
+   Lead 分配任务给 Driver：
+     "Thompson，根据 Cunningham 的方案编写 [模块A] 的代码"
+
+   同时 Lead 分配任务给 Navigator：
+     "Cunningham，Driver 正在编写模块A，你开始设计 [模块B] 的方案"
+   ```
+
+3. **边界约束**
+   - Navigator 设计的是**下一阶段**的模块，不是当前正在编码的模块
+   - Driver 只根据**已确认的方案**编码，不接受 Navigator 临时调整当前方案
+   - 如果 Driver 发现当前方案有问题，必须反馈给 Lead，由 Lead 协调
+
+4. **适用场景**
+   - 提升测试覆盖率（函数级别并行）
+   - 多模块功能开发
+   - 大规模重构
+
+5. **不适用场景**
+   - 模块间有强依赖（B 依赖 A 的实现细节）
+   - 架构设计阶段（需要充分讨论）
+   - 新人培训（需要同步指导）
+
+**流水线并行状态跟踪：**
+```
+阶段状态：
+- Cunningham: 设计 [模块B] 方案
+- Thompson: 编写 [模块A] 代码（根据已确认方案A）
+- Lead: 协调两个任务，确保无缝衔接
 ```
 
 **2. 任务粒度控制**
