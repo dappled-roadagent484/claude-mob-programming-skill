@@ -1,25 +1,29 @@
 ---
 name: mob-programming
 description: |
-  组建一个 mob programming 团队进行 TDD 开发。当用户想要"用TDD开发"、"mob programming"、"团队协作编程"、"测试驱动开发"、"需要代码审查"、"组建开发团队"或提到"Turing/Jobs/Thompson"时立即使用此技能。
+  组建 Pair/Mob Programming 团队进行代码开发。根据用户需求智能选择团队配置：
+  - Pair 模式（2人）：Turing（测试）+ Thompson（实现），内部遵循 TDD 规范
+  - Pair 审查模式（2人）：Jobs（Navigator）+ Thompson（Driver），内部遵循 SOLID 原则
+  - Mob 三人模式（3人）：Turing + Jobs + Thompson，完整双重审查流程
 
   触发场景：
-  - "帮我用TDD实现一个功能"
-  - "启动mob programming"
-  - "组建团队开发"
-  - "需要代码审查"
-  - "用测试驱动方式写代码"
-  - "帮我重构这段代码"
-  - "确保代码质量"
-commands:
-  - trigger: start
-    description: 启动 mob programming 团队进行 TDD 开发
-  - trigger: continue
-    description: 继续当前开发流程
-  - trigger: status
-    description: 查看当前任务状态
-  - trigger: skip
-    description: 跳过当前审查步骤（快速模式）
+  - "pair programming" / "结对编程" / "结对" → 询问选择 Pair 模式
+  - "mob programming" / "团队编程" → 启动三人模式
+  - "代码审查" / "帮我重构" → Pair 审查模式
+  - 提到 "Turing/Jobs/Thompson" → 按指定角色启动
+
+triggers:
+  - "pair programming"
+  - "结对编程"
+  - "结对"
+  - "pair"
+  - "mob programming"
+  - "团队编程"
+  - "代码审查"
+  - "重构"
+  - "Turing"
+  - "Jobs"
+  - "Thompson"
 ---
 
 # Mob Programming Team - TDD Development
