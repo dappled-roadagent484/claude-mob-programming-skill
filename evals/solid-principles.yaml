@@ -1,0 +1,86 @@
+name: solid-principles
+description: 测试是否严格遵循 SOLID 原则
+
+test_cases:
+  - id: single-responsibility
+    description: "单一职责原则检查"
+    validations:
+      - check: "函数只做一件事"
+        rule: "函数长度 < 50行"
+        severity: "high"
+      - check: "类只负责一个概念"
+        rule: "类的方法数 < 10"
+        severity: "high"
+      - check: "函数描述不需要用'和'字"
+        rule: "如果需要用'和'描述，说明做了太多事"
+        severity: "medium"
+
+  - id: open-closed
+    description: "开闭原则检查"
+    validations:
+      - check: "对扩展开放"
+        rule: "使用接口/抽象类支持新功能"
+        severity: "high"
+      - check: "对修改关闭"
+        rule: "新增功能不修改现有代码"
+        severity: "high"
+      - check: "避免条件分支判断类型"
+        rule: "用多态替代 if/switch 类型判断"
+        severity: "medium"
+
+  - id: liskov-substitution
+    description: "里氏替换原则检查"
+    validations:
+      - check: "子类可替换父类"
+        rule: "使用子类时代码行为一致"
+        severity: "high"
+      - check: "子类不弱化父类契约"
+        rule: "前置条件不更强，后置条件不更弱"
+        severity: "medium"
+
+  - id: interface-segregation
+    description: "接口隔离原则检查"
+    validations:
+      - check: "接口小而专注"
+        rule: "接口方法数 < 5"
+        severity: "high"
+      - check: "客户端不依赖不需要的方法"
+        rule: "没有空实现或抛异常的方法"
+        severity: "high"
+
+  - id: dependency-inversion
+    description: "依赖倒置原则检查"
+    validations:
+      - check: "依赖抽象而非具体"
+        rule: "函数参数使用接口类型"
+        severity: "high"
+      - check: "高层模块不依赖低层模块"
+        rule: "都依赖抽象"
+        severity: "high"
+      - check: "使用依赖注入"
+        rule: "不直接创建依赖对象"
+        severity: "medium"
+
+solid_checklist:
+  - item: "S - 函数长度 < 50行"
+    required: true
+  - item: "S - 参数数量 < 4个"
+    required: true
+  - item: "O - 使用接口/抽象"
+    required: true
+  - item: "L - 继承关系正确"
+    required: false  # 不一定使用继承
+  - item: "I - 接口小而专注"
+    required: true
+  - item: "D - 依赖接口而非实现"
+    required: true
+
+metrics:
+  - name: "solid_compliance_rate"
+    target: ">= 90%"
+
+  - name: "function_length_avg"
+    target: "<= 30 lines"
+
+  - name: "interface_size_avg"
+    target: "<= 5 methods"

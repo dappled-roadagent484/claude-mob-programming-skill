@@ -1,0 +1,53 @@
+name: mob-mode
+description: 测试 Mob 三人模式是否正确启动
+
+test_cases:
+  - id: mob-trigger-1
+    description: "mob programming 应启动三人团队"
+    input:
+      user_message: "启动mob programming团队"
+    expected_behavior:
+      - action: confirm_mob_mode
+        message: "将启动三人团队 (Turing + Jobs + Thompson)，包含完整审查流程。确认吗？"
+      - action: if_confirmed
+        team_configuration:
+          mode: "mob"
+          members:
+            - name: "Turing"
+              role: "测试专家"
+            - name: "Jobs"
+              role: "架构师/审查者"
+            - name: "Thompson"
+              role: "实现专家"
+        workflow:
+          - "Turing: 编写测试方案"
+          - "Jobs: 审查测试方案"
+          - "Turing: 编写测试代码"
+          - "Jobs: 审查测试代码"
+          - "Thompson: 执行测试 → 编写生产方案"
+          - "Jobs: 审查生产方案"
+          - "Thompson: 编写生产代码"
+          - "Jobs: 审查生产代码"
+
+  - id: mob-trigger-2
+    description: "组建团队应询问模式选择"
+    input:
+      user_message: "组建开发团队"
+    expected_behavior:
+      - action: ask_mode_selection
+        options:
+          - "Pair TDD模式 (2人): 适合新功能开发"
+          - "Pair 审查模式 (2人): 适合重构和代码审查"
+          - "Mob 三人模式 (3人): 适合关键功能和质量把关"
+
+checklist:
+  - item: "是否启动 Turing + Jobs + Thompson 三人团队"
+    required: true
+  - item: "是否包含双重审查流程"
+    required: true
+  - item: "Jobs 是否只在审查环节介入"
+    required: true
+  - item: "Turing 是否只负责测试"
+    required: true
+  - item: "Thompson 是否只负责实现"
+    required: true

@@ -1,0 +1,138 @@
+name: mob-programming
+description: |
+  智能 Pair/Mob Programming 团队协作编程 Skill。
+
+  根据用户需求自动选择最佳团队配置：
+  - **Pair TDD模式**: Turing(测试) + Thompson(实现) — 测试驱动开发
+  - **Pair 审查模式**: Jobs(Navigator) + Thompson(Driver) — 代码审查与重构
+  - **Mob 三人模式**: Turing + Jobs + Thompson — 完整质量保证流程
+
+  严格遵循 TDD 规范和 SOLID 原则。
+
+triggers:
+  - pattern: "pair programming"
+    action: prompt_mode_selection
+    description: "询问用户选择 Pair TDD模式 或 Pair 审查模式"
+
+  - pattern: "mob programming|mob-programming"
+    action: start_mob_mode
+    description: "启动三人完整团队模式"
+
+  - pattern: "TDD|测试驱动|test driven|帮我写测试"
+    action: start_pair_tdd
+    description: "启动 Pair TDD模式 (Turing + Thompson)"
+
+  - pattern: "代码审查|重构|review|refactor|帮我审查"
+    action: start_pair_review
+    description: "启动 Pair 审查模式 (Jobs + Thompson)"
+
+  - pattern: "Turing|Jobs|Thompson"
+    action: infer_mode_from_names
+    description: "根据提到的角色名推断模式"
+
+commands:
+  - name: start
+    description: "启动 Pair/Mob Programming 团队"
+    args:
+      - name: mode
+        description: "模式选择: pair-tdd, pair-review, mob"
+        required: false
+      - name: task
+        description: "开发任务描述"
+        required: true
+
+  - name: continue
+    description: "继续当前开发流程"
+
+  - name: status
+    description: "查看当前任务状态"
+
+  - name: switch
+    description: "切换团队模式"
+    args:
+      - name: new_mode
+        description: "新模式: pair-tdd, pair-review, mob"
+        required: true
+
+agents:
+  Turing:
+    role: "测试专家"
+    responsibility: "编写测试方案和测试代码，确保 TDD 规范"
+    can_write: ["tests", "test_plans"]
+    cannot_write: ["production_code"]
+
+  Thompson:
+    role: "实现专家"
+    responsibility: "编写生产代码，遵循 SOLID 原则，确保测试通过"
+    can_write: ["production_code"]
+    cannot_write: ["tests"]
+
+  Jobs:
+    role: "架构师/审查者"
+    responsibility: "审查设计方案和代码质量，确保 SOLID 合规"
+    can_write: []
+    cannot_write: ["tests", "production_code"]
+
+modes:
+  pair-tdd:
+    name: "Pair TDD模式"
+    members: [Turing, Thompson]
+    workflow:
+      - Turing: 分析需求 → 编写测试方案
+      - Turing: 编写测试代码 (RED)
+      - Thompson: 执行测试 → 编写实现 (GREEN)
+      - Thompson: 重构优化 (IMPROVE)
+    suitable_for:
+      - "新功能开发"
+      - "TDD实践"
+      - "测试优先开发"
+
+  pair-review:
+    name: "Pair 审查模式"
+    members: [Jobs, Thompson]
+    workflow:
+      - Jobs: 分析代码/需求 → 制定方案
+      - Thompson: 编写代码
+      - Jobs: SOLID审查 → 提出改进
+      - Thompson: 修改代码
+    suitable_for:
+      - "代码重构"
+      - "复杂逻辑实现"
+      - "质量把关"
+
+  mob:
+    name: "Mob 三人模式"
+    members: [Turing, Jobs, Thompson]
+    workflow:
+      - Turing: 编写测试方案
+      - Jobs: 审查测试方案
+      - Turing: 编写测试代码
+      - Jobs: 审查测试代码
+      - Thompson: 执行测试 → 编写生产方案
+      - Jobs: 审查生产方案
+      - Thompson: 编写生产代码
+      - Jobs: 审查生产代码
+    suitable_for:
+      - "关键功能"
+      - "高风险变更"
+      - "团队培训"
+
+principles:
+  tdd:
+    - "先写测试，后写实现"
+    - "只写让测试通过的最少代码"
+    - "重构优化，保持测试通过"
+
+  solid:
+    S: "单一职责 - 一个函数只做一件事"
+    O: "开闭原则 - 对扩展开放，对修改关闭"
+    L: "里氏替换 - 子类可替换父类"
+    I: "接口隔离 - 接口小而专注"
+    D: "依赖倒置 - 依赖抽象而非具体"
+
+quality_gates:
+  test_coverage: 80
+  max_function_lines: 50
+  max_parameters: 4
+  require_error_handling: true
+  require_naming_clarity: true

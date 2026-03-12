@@ -1,0 +1,81 @@
+name: tdd-compliance
+description: 测试是否严格遵循 TDD 规范
+
+test_cases:
+  - id: tdd-red-phase
+    description: "必须严格执行 RED 阶段"
+    scenario:
+      step: 1
+      actor: "Turing"
+      action: "编写测试代码"
+    validation:
+      - check: "测试是否在实现之前编写"
+        expected: true
+      - check: "测试是否可运行"
+        expected: true
+      - check: "测试是否失败"
+        expected: true
+      - check: "失败信息是否清晰"
+        expected: true
+
+  - id: tdd-green-phase
+    description: "必须严格执行 GREEN 阶段"
+    scenario:
+      step: 2
+      actor: "Thompson"
+      action: "编写实现代码"
+    validation:
+      - check: "是否只写让测试通过的代码"
+        expected: true
+      - check: "是否没有添加额外功能"
+        expected: true
+      - check: "是否没有预优化"
+        expected: true
+      - check: "测试是否通过"
+        expected: true
+
+  - id: tdd-improve-phase
+    description: "必须严格执行 IMPROVE 阶段"
+    scenario:
+      step: 3
+      actor: "Thompson"
+      action: "重构优化"
+    validation:
+      - check: "是否优化了代码结构"
+        expected: true
+      - check: "是否没有改变外部行为"
+        expected: true
+      - check: "所有测试是否仍然通过"
+        expected: true
+      - check: "是否应用了 SOLID 原则"
+        expected: true
+
+tdd_violations:
+  - description: "禁止先写实现后写测试"
+    severity: "critical"
+    check: "implementation_before_test"
+
+  - description: "禁止写超出测试范围的代码"
+    severity: "high"
+    check: "code_beyond_test_scope"
+
+  - description: "禁止跳过 RED 阶段"
+    severity: "critical"
+    check: "skip_red_phase"
+
+  - description: "禁止跳过 GREEN 阶段直接重构"
+    severity: "high"
+    check: "skip_green_phase"
+
+metrics:
+  - name: "red_phase_compliance"
+    target: 100%
+
+  - name: "green_phase_compliance"
+    target: 100%
+
+  - name: "improve_phase_compliance"
+    target: 100%
+
+  - name: "test_coverage"
+    target: ">= 80%"

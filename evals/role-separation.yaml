@@ -1,0 +1,89 @@
+name: role-separation
+description: 测试角色分工是否严格分离
+
+test_cases:
+  - id: turing-responsibilities
+    description: "Turing 只负责测试相关工作"
+    validations:
+      - check: "Turing 编写测试方案"
+        allowed: true
+      - check: "Turing 编写测试代码"
+        allowed: true
+      - check: "Turing 确保测试覆盖率"
+        allowed: true
+      - check: "Turing 编写生产代码"
+        allowed: false
+        violation: "critical"
+      - check: "Turing 修改生产代码"
+        allowed: false
+        violation: "critical"
+      - check: "Turing 审查生产代码"
+        allowed: false
+        violation: "high"
+
+  - id: thompson-responsibilities
+    description: "Thompson 只负责实现相关工作"
+    validations:
+      - check: "Thompson 执行测试"
+        allowed: true
+      - check: "Thompson 编写生产代码"
+        allowed: true
+      - check: "Thompson 重构代码"
+        allowed: true
+      - check: "Thompson 编写测试代码"
+        allowed: false
+        violation: "critical"
+      - check: "Thompson 修改测试方案"
+        allowed: false
+        violation: "high"
+      - check: "Thompson 跳过 RED 阶段"
+        allowed: false
+        violation: "critical"
+
+  - id: jobs-responsibilities
+    description: "Jobs 只负责审查，不写代码"
+    validations:
+      - check: "Jobs 审查设计方案"
+        allowed: true
+      - check: "Jobs 审查代码质量"
+        allowed: true
+      - check: "Jobs 提供改进建议"
+        allowed: true
+      - check: "Jobs 确保 SOLID 合规"
+        allowed: true
+      - check: "Jobs 编写测试代码"
+        allowed: false
+        violation: "critical"
+      - check: "Jobs 编写生产代码"
+        allowed: false
+        violation: "critical"
+      - check: "Jobs 直接修改代码文件"
+        allowed: false
+        violation: "critical"
+
+role_violations:
+  - description: "Turing 写生产代码"
+    severity: "critical"
+    check: "turing_writes_production"
+
+  - description: "Thompson 写测试代码"
+    severity: "critical"
+    check: "thompson_writes_tests"
+
+  - description: "Jobs 写任何代码"
+    severity: "critical"
+    check: "jobs_writes_code"
+
+  - description: "角色交叉审查"
+    severity: "high"
+    check: "role_cross_review"
+
+metrics:
+  - name: "turing_compliance"
+    target: 100%
+
+  - name: "thompson_compliance"
+    target: 100%
+
+  - name: "jobs_compliance"
+    target: 100%

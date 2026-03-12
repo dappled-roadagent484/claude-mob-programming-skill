@@ -1,0 +1,60 @@
+name: pair-tdd-mode
+description: 测试 Pair TDD 模式是否正确识别和启动
+
+test_cases:
+  - id: pair-tdd-trigger-1
+    description: "TDD 关键词应触发 Pair TDD 模式"
+    input:
+      user_message: "帮我用TDD实现一个用户注册功能"
+    expected_behavior:
+      - action: ask_mode_selection
+        reason: "用户说 pair programming 相关，应询问选择 TDD 还是审查模式"
+      - action: if_user_selects_tdd
+        team_configuration:
+          mode: "pair-tdd"
+          members:
+            - name: "Turing"
+              role: "测试专家"
+            - name: "Thompson"
+              role: "实现专家"
+        workflow:
+          - "Turing 编写测试方案"
+          - "Turing 编写测试代码 (RED)"
+          - "Thompson 执行测试 → 编写实现 (GREEN)"
+          - "Thompson 重构 (IMPROVE)"
+
+  - id: pair-tdd-trigger-2
+    description: "测试驱动开发关键词应触发 Pair TDD 模式"
+    input:
+      user_message: "用测试驱动开发帮我写一个订单处理模块"
+    expected_behavior:
+      - action: ask_mode_selection
+      - action: if_user_selects_tdd
+        team_configuration:
+          mode: "pair-tdd"
+          members: ["Turing", "Thompson"]
+
+  - id: pair-tdd-trigger-3
+    description: "帮我写测试应触发 Pair TDD 模式"
+    input:
+      user_message: "帮我写测试来验证这个函数"
+    expected_behavior:
+      - action: ask_mode_selection
+      - action: if_user_selects_tdd
+        team_configuration:
+          mode: "pair-tdd"
+          members: ["Turing", "Thompson"]
+
+checklist:
+  - item: "是否正确询问用户选择模式"
+    required: true
+  - item: "是否启动 Turing + Thompson 两人团队"
+    required: true
+  - item: "是否禁止 Turing 写生产代码"
+    required: true
+  - item: "是否禁止 Thompson 写测试代码"
+    required: true
+  - item: "是否遵循 RED → GREEN → IMPROVE 流程"
+    required: true
+  - item: "是否检查 SOLID 原则"
+    required: true
