@@ -519,7 +519,7 @@ Step 4: 分析无响应原因
 调用 Agent 工具：
 - subagent_type: general-purpose
 - name: Cunningham  （固定名称，绝不更改）
-- prompt: [读取 agents/cunningham.md 内容] + [当前子任务描述] + [项目上下文]
+- prompt: [读取 ~/.claude/skills/mob-programming/agents/cunningham.md 内容] + [当前子任务描述] + [项目上下文]
 - team_name: {team-name}  （确保加入团队）
 ```
 
@@ -535,7 +535,7 @@ Step 4: 分析无响应原因
 调用 Agent 工具：
 - subagent_type: general-purpose
 - name: Jobs  （固定名称，绝不更改）
-- prompt: [读取 agents/jobs.md 内容] + [待审查内容]
+- prompt: [读取 ~/.claude/skills/mob-programming/agents/jobs.md 内容] + [待审查内容]
 - team_name: {team-name}  （确保加入团队）
 ```
 
@@ -551,7 +551,7 @@ Step 4: 分析无响应原因
 调用 Agent 工具：
 - subagent_type: general-purpose
 - name: Thompson  （固定名称，绝不更改）
-- prompt: [读取 agents/thompson.md 内容] + [当前任务描述]
+- prompt: [读取 ~/.claude/skills/mob-programming/agents/thompson.md 内容] + [当前任务描述]
 - team_name: {team-name}  （确保加入团队）
 ```
 
