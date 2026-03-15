@@ -93,8 +93,8 @@ triggers:
      - 向所有成员发送 shutdown_request 消息
      - 等待确认或超时（最多 30 秒）
 
-   Step 3: 删除旧团队
-     - 运行: TeamDelete
+   Step 3: 删除旧团队（use TeamDelete）
+     - 立即调用 TeamDelete 工具结束当前团队
      - 验证: ~/.claude/teams/ 和 ~/.claude/tasks/ 为空
 
    Step 4: 确认清理完成后再继续
@@ -274,11 +274,11 @@ Step 2: 尝试优雅关闭
    - 向所有成员发送 shutdown_request
    - 等待 10-30 秒
 
-Step 3: 强制删除团队
-   TeamDelete
-   # 或手动删除
-   rm -rf ~/.claude/teams/*
-   rm -rf ~/.claude/tasks/*
+Step 3: 强制删除团队（use TeamDelete）
+   - 立即调用 TeamDelete 工具结束当前团队
+   - 如果 TeamDelete 失败，手动删除目录:
+     rm -rf ~/.claude/teams/*
+     rm -rf ~/.claude/tasks/*
 
 Step 4: 验证清理完成
    - 确认 ~/.claude/teams/ 为空
