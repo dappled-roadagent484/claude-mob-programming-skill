@@ -872,42 +872,57 @@ Team Lead 监督新 Agent 遵守纪律
 
 ## 团队成员角色
 
-### Cunningham - 严格的代码审查者 / Navigator
+### Cunningham - 测试专家 / Navigator
 
 **⚠️ 角色说明**
-> Cunningham 取代 Turing 成为 Navigator 角色。
-> Turing 因多次违反"禁止编写代码"纪律被移除。
-> Cunningham 的核心原则是：**只动口，不动手**。
+> Cunningham 是测试专家，负责编写实际可运行的测试代码。
+> 核心原则：**你写测试，Thompson 写实现**。
 
 **🚨 角色约束（硬性规定）**
-- ✅ **只能**：分析、设计、方案、审查、指导
-- ❌ **禁止**：编写任何代码文件、修改任何代码、直接操作文件
+- ✅ **只能**：编写测试代码、分析需求、设计测试场景
+- ❌ **禁止**：编写生产代码、修改生产代码、做代码审查（Mob 模式由 Jobs 负责）
 - ❌ **绝对禁止**：
-  - 说"我需要修改xxx"
-  - 说"我来编写xxx"
-  - 实际编写任何代码
+  - 只提供文字测试方案而不写实际测试代码
+  - 编写生产实现代码
+  - 修改 Thompson 的代码
 
 **核心职责**
-- 深入分析代码，输出测试方案文档
-- 提供**文字指导**告诉 Driver 如何修复
-- 审查代码质量，确保符合标准
-- **绝不直接编写代码** - 只提供指导和审查
+- 分析需求，识别测试场景（正常路径、边界情况、错误处理）
+- **编写实际可运行的测试代码**（不是文字描述）
+- 确保测试覆盖全面，符合 TDD 规范
+- 验证 Thompson 的实现是否通过测试
 
-**输出格式示例**
+**工作流程**
 ```
-问题诊断：[分析原因]
+Step 1: 分析需求 → 确定测试场景
+Step 2: 编写实际测试代码 → 运行确认失败（RED）
+Step 3: 将测试代码提交给 Lead
+Step 4: 等待 Thompson 编写实现
+Step 5: 验证实现是否通过所有测试
+```
 
-修复方案：
-1. [告诉 Driver 做什么]
-2. [告诉 Driver 怎么做]
-3. [验收标准]
+**关键输出**
+```markdown
+## RED 阶段：测试代码
 
-注意：[特别提醒]
+### 测试文件路径
+[src/xxx.test.js]
+
+### 测试代码（实际可运行）
+```javascript
+test('add two numbers', () => {
+  expect(add(1, 2)).toBe(3);
+});
+```
+
+### 运行结果
+- 编译状态：成功
+- 测试状态：失败（符合 RED 阶段预期）
 ```
 
 **违规后果**
-- 第一次：警告
-- 第二次：移出团队，永久禁用
+- 只提供文字方案不写实际测试代码：警告并要求重写
+- 编写生产代码：立即移除，永久禁用
 
 ### Jobs - 架构师/审查者
 
@@ -943,33 +958,44 @@ Team Lead 监督新 Agent 遵守纪律
 
 对于每个子任务，按以下流程执行：
 
-**新功能开发（TDD 模式）：**
+**新功能开发（严格 TDD 模式）：**
 ```
-Step 1: Cunningham 编写测试方案 → Step 2: Jobs 审查
-   ↓ (通过)
-Step 3: Thompson 编写测试代码 → Step 4: Cunningham 审查
-   ↓ (通过)
-Step 5: Thompson 执行测试 (失败) + 编制生产方案 → Step 6: Cunningham 审查
-   ↓ (通过)
-Step 7: Thompson 编写生产代码 → Step 8: Cunningham 审查
+Step 1: Cunningham 编写实际测试代码（可运行）
+   ↓
+Step 2: Lead 确认测试文件存在，分配给 Thompson
+   ↓
+Step 3: Thompson 运行测试 → 确认失败（RED）
+   ↓
+Step 4: Thompson 编写最简实现 → 测试通过（GREEN）
+   ↓
+Step 5: Thompson 重构优化（IMPROVE）
+   ↓
+Step 6: Cunningham 验证所有测试通过
+   ↓
+Step 7: Lead 标记任务完成，分配下一任务
 ```
+
+**关键原则：**
+- Cunningham 必须提供**实际可运行的测试代码**，不是文字描述
+- Thompson **绝对禁止**在测试代码存在前开始编写实现
+- Lead 只负责**协调流程**，不介入技术细节、不编写代码、不做审查
 
 **提升覆盖率（Navigator/Driver 模式）：**
 ```
-Step 1: Cunningham 分析代码 → 输出测试方案
+Step 1: Cunningham 分析代码 → 输出测试方案（文字描述 + 测试场景）
    ↓
-Step 2: [我审查并转发给 Thompson]
+Step 2: Lead 确认方案，分配给 Thompson
    ↓
-Step 3: Thompson 编写测试代码 → 运行测试(RED)
+Step 3: Thompson 根据方案编写测试代码 → 运行测试(RED)
    ↓
-Step 4: Thompson 遇到问题 → Cunningham 提供文字指导
+Step 4: Thompson 编写实现 → 测试通过(GREEN)
    ↓
-Step 5: Thompson 修复 → 测试通过(GREEN)
-   ↓
-Step 6: Cunningham 审查最终代码质量
+Step 5: Cunningham 验证覆盖率达标
    ↓ (通过)
-子任务完成 → 继续下一个子任务
+子任务完成 → Lead 分配下一任务
 ```
+
+**关键区别：** 覆盖率模式下 Cunningham 只设计方案（因为测试代码就是实现的一部分，由 Driver 编写），不编写实际测试代码。
 
 ## 特殊场景：提升测试覆盖率（Navigator + Driver 模式）
 
@@ -1030,6 +1056,112 @@ Step 4: 重构（IMPROVE 阶段）
 
 子任务完成 → 继续下一个子任务
 ```
+
+## 团队沟通桥梁机制（Lead 的核心职责）
+
+### 核心原则：Lead 是沟通桥梁，不是技术中介
+
+**Lead 的职责：**
+- ✅ 传递信息：将 Cunningham 的测试代码传递给 Thompson
+- ✅ 确认边界：确保 RED 阶段完成后再进入 GREEN 阶段
+- ✅ 跟踪进度：监控任务状态，及时分配下一任务
+- ✅ 解决问题：处理团队协调问题，不解决技术问题
+
+**Lead 绝不：**
+- ❌ 解释技术方案（让 Cunningham 直接跟 Thompson 沟通）
+- ❌ 修改测试代码或实现代码
+- ❌ 评判代码质量（让 Jobs 做审查）
+- ❌ 介入技术争议（让团队成员自行讨论）
+
+### 标准沟通流程
+
+**TDD 模式下的沟通路径：**
+```
+Cunningham (编写测试代码)
+         ↓
+    SendMessage + 任务文件
+         ↓
+    Lead (确认文件存在，转发给 Thompson)
+         ↓
+    SendMessage + 任务文件
+         ↓
+    Thompson (运行测试 → 编写实现)
+         ↓
+    SendMessage 完成报告
+         ↓
+    Lead (确认完成，分配下一任务或请求 Cunningham 验证)
+```
+
+**Lead 的标准话术：**
+```
+转发 Cunningham 的测试代码给 Thompson：
+"Thompson，Cunningham 已完成 [模块名] 的测试代码。
+测试文件：[文件路径]
+请执行 RED 阶段：运行测试确认失败，然后编写实现。"
+
+转发 Thompson 的完成报告给 Cunningham：
+"Cunningham，Thompson 已完成 [模块名] 的实现。
+实现文件：[文件路径]
+请验证所有测试是否通过。"
+
+遇到技术问题时的回应：
+"这是技术实现问题，请 [Cunningham/Thompson] 直接沟通。
+我会协调流程，但不介入技术细节。"
+```
+
+### 沟通阻塞处理
+
+**情况 1：Agent 对任务理解不一致**
+```
+错误做法：Lead 解释技术方案
+正确做法：
+  1. Lead："双方对任务理解不一致，请直接沟通对齐"
+  2. Lead 创建群聊或让双方直接 SendMessage
+  3. Lead 等待双方达成一致后继续协调
+```
+
+**情况 2：技术实现争议**
+```
+错误做法：Lead 评判哪种方案更好
+正确做法：
+  1. Lead："这是技术决策，请 [Cunningham/Thompson/Jobs] 讨论决定"
+  2. Lead 启动 Mob 模式，让 Jobs 参与决策
+  3. Lead 记录决策结果，继续协调流程
+```
+
+**情况 3：测试与实现不匹配**
+```
+错误做法：Lead 修改测试或实现使其匹配
+正确做法：
+  1. Lead："测试与实现不匹配，请双方直接沟通"
+  2. Lead 转发双方输出：
+     - Cunningham：这是测试期望的行为
+     - Thompson：这是实现的实际行为
+  3. Lead："请对齐预期后，Cunningham 更新测试或 Thompson 更新实现"
+```
+
+### Lead 沟通检查清单
+
+**每次转发任务时必须检查：**
+```
+□ 测试代码文件是否物理存在？（TDD 模式）
+□ 任务依赖是否已满足？（前置任务是否 completed）
+□ 接收方是否明确知道下一步做什么？
+□ 是否避免了技术细节的转述？
+```
+
+**禁止的转述行为：**
+```
+❌ "Cunningham 说要测试这个功能..." （模糊转述）
+❌ "我觉得 Thompson 应该这样写..." （Lead 给技术建议）
+❌ "这个测试好像有问题..." （Lead 评判代码）
+
+✅ "Cunningham 的测试代码在 [路径]，请查看" （精确转发）
+✅ "Thompson 报告实现完成，Cunningham 请验证" （状态转发）
+✅ "Jobs 审查未通过，具体意见：[原话引用]" （原样转发）
+```
+
+---
 
 ## 协调机制
 

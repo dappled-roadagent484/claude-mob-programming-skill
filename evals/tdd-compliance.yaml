@@ -1,13 +1,35 @@
 name: tdd-compliance
-description: 测试是否严格遵循 TDD 规范
+description: 测试是否严格遵循 TDD 规范 - 严格 RED-GREEN-IMPROVE 流程
+
+strict_rules:
+  - id: no-implementation-without-test
+    description: "绝对禁止无测试先写实现"
+    severity: critical
+    enforcement: hard_block
+    check_points:
+      - "Thompson 必须确认测试文件物理存在"
+      - "Thompson 必须运行测试并确认失败"
+      - "禁止基于文字描述编写实现"
+
+  - id: test-must-be-executable
+    description: "测试必须是可运行的实际代码"
+    severity: critical
+    enforcement: hard_block
+    check_points:
+      - "Cunningham 必须提供实际测试文件"
+      - "测试代码必须能编译/解析"
+      - "禁止只提供文字测试方案"
 
 test_cases:
   - id: tdd-red-phase
     description: "必须严格执行 RED 阶段"
     scenario:
       step: 1
-      actor: "Turing"
-      action: "编写测试代码"
+      actor: "Cunningham"
+      action: "编写实际可运行的测试代码（不是文字描述）"
+    hard_requirements:
+      - "必须是实际测试代码文件，物理存在"
+      - "禁止只提供文字测试方案"
     validation:
       - check: "测试是否在实现之前编写"
         expected: true

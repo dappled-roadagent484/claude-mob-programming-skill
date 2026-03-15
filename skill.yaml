@@ -3,9 +3,9 @@ description: |
   智能 Pair/Mob Programming 团队协作编程 Skill。
 
   根据用户需求自动选择最佳团队配置：
-  - **Pair TDD模式**: Turing(测试) + Thompson(实现) — 测试驱动开发
+  - **Pair TDD模式**: Cunningham(测试) + Thompson(实现) — 严格TDD，先写测试代码
   - **Pair 审查模式**: Jobs(Navigator) + Thompson(Driver) — 代码审查与重构
-  - **Mob 三人模式**: Turing + Jobs + Thompson — 完整质量保证流程
+  - **Mob 三人模式**: Cunningham + Jobs + Thompson — 完整质量保证流程
 
   严格遵循 TDD 规范和 SOLID 原则。
 
@@ -20,13 +20,13 @@ triggers:
 
   - pattern: "TDD|测试驱动|test driven|帮我写测试"
     action: start_pair_tdd
-    description: "启动 Pair TDD模式 (Turing + Thompson)"
+    description: "启动 Pair TDD模式 (Cunningham + Thompson)"
 
   - pattern: "代码审查|重构|review|refactor|帮我审查"
     action: start_pair_review
     description: "启动 Pair 审查模式 (Jobs + Thompson)"
 
-  - pattern: "Turing|Jobs|Thompson"
+  - pattern: "Cunningham|Jobs|Thompson"
     action: infer_mode_from_names
     description: "根据提到的角色名推断模式"
 
@@ -55,11 +55,11 @@ commands:
         required: true
 
 agents:
-  Turing:
-    role: "测试专家"
-    responsibility: "编写测试方案和测试代码，确保 TDD 规范"
-    can_write: ["tests", "test_plans"]
-    cannot_write: ["production_code"]
+  Cunningham:
+    role: "测试专家（Navigator）"
+    responsibility: "编写测试代码，确保 TDD 规范。只能写测试代码，禁止写生产代码"
+    can_write: ["tests"]
+    cannot_write: ["production_code", "test_plans_only"]
 
   Thompson:
     role: "实现专家"
@@ -76,12 +76,15 @@ agents:
 modes:
   pair-tdd:
     name: "Pair TDD模式"
-    members: [Turing, Thompson]
+    members: [Cunningham, Thompson]
     workflow:
-      - Turing: 分析需求 → 编写测试方案
-      - Turing: 编写测试代码 (RED)
-      - Thompson: 执行测试 → 编写实现 (GREEN)
+      - Cunningham: 编写测试代码 (RED) - 必须是可运行的实际代码
+      - Thompson: 执行测试 → 确认失败 → 编写实现 (GREEN)
       - Thompson: 重构优化 (IMPROVE)
+    strict_rules:
+      - "Thompson 绝对禁止基于测试方案描述编写代码"
+      - "Thompson 必须等到 Cunningham 提供实际测试代码文件后才能开始"
+      - "RED 阶段必须确认测试实际运行并失败"
     suitable_for:
       - "新功能开发"
       - "TDD实践"
@@ -102,16 +105,15 @@ modes:
 
   mob:
     name: "Mob 三人模式"
-    members: [Turing, Jobs, Thompson]
+    members: [Cunningham, Jobs, Thompson]
     workflow:
-      - Turing: 编写测试方案
-      - Jobs: 审查测试方案
-      - Turing: 编写测试代码
+      - Cunningham: 编写测试代码（必须是可运行的实际代码）
       - Jobs: 审查测试代码
-      - Thompson: 执行测试 → 编写生产方案
-      - Jobs: 审查生产方案
-      - Thompson: 编写生产代码
-      - Jobs: 审查生产代码
+      - Thompson: 执行测试 → 确认失败 → 编写实现
+      - Jobs: 审查实现代码
+    strict_rules:
+      - "Thompson 绝对禁止基于文字描述编写代码"
+      - "必须有实际测试代码文件存在且运行失败，Thompson 才能开始"
     suitable_for:
       - "关键功能"
       - "高风险变更"

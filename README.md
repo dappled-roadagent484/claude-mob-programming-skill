@@ -16,21 +16,33 @@
 
 | 角色 | 职责 | 工作方式 |
 |------|------|----------|
-| **Cunningham** | 测试专家 / Navigator | 分析代码、设计测试方案、审查代码质量 |
-| **Thompson** | 实现专家 / Driver | 编写测试代码和生产代码 |
+| **Cunningham** | 测试专家 | 编写实际可运行的测试代码（不是文字描述） |
+| **Thompson** | 实现专家 | 根据测试代码编写生产实现 |
 | **Jobs** | 架构师 / 审查者 | 代码审查、质量把关、架构决策 |
+| **Lead** | 团队协调员 | 只协调不编码，确保流程顺畅 |
 
 ### 工作流程
 
-**TDD 模式：**
+**严格 TDD 模式（Pair）：**
 ```
-Cunningham(测试方案) → Jobs(审查) → Thompson(实现) → Cunningham(验证)
+Cunningham(编写实际测试代码) → Lead(确认并转发) → Thompson(RED→GREEN→IMPROVE) → Cunningham(验证)
 ```
+- Cunningham 必须提供可运行的测试代码（不是文字描述）
+- Thompson 必须等到测试代码存在后才能开始
+- Lead 只做协调，不介入技术细节
 
 **Pair 覆盖率模式：**
 ```
-Cunningham(Navigator) 设计方案 → Thompson(Driver) 编写代码 → Cunningham 审查
+Cunningham(Navigator) 设计方案 → Thompson(Driver) 编写测试+实现 → Cunningham 验证
 ```
+- Cunningham 只设计方案（因为测试代码是"实现"的一部分）
+- Thompson 编写所有代码
+- Lead 只做协调，不介入技术细节
+
+**团队纪律**
+- **Lead 绝不编码**：只负责协调流程、分配任务、跟踪进度
+- **Cunningham 绝不写实现**：只写测试代码
+- **Thompson 绝不写测试方案**：只根据已有测试写实现
 
 ## 使用说明
 
